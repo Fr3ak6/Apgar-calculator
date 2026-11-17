@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calcolatore del punteggio di Apgar</title>
+<style>
+  *{box-sizing:border-box;margin:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#1d2b3a;background:#fff;padding:16px;line-height:1.5}
+  .box{max-width:720px;margin:0 auto}
+  h2{font-family:Georgia,serif;font-size:1.5rem;margin-bottom:4px}
+  .sub{color:#5b6b7a;margin-bottom:16px;font-size:.95rem}
+  .tempo{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tempo label{display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600}
+  fieldset{border:1px solid #dfe7e9;border-radius:14px;padding:12px 14px;margin-bottom:12px}
+  legend{font-weight:700;padding:0 6px;color:#6b3a5c}
+  .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  @media(max-width:560px){.opts{grid-template-columns:1fr}}
+  .opts input{position:absolute;opacity:0}
+  .opts label{display:block;border:2px solid #dfe7e9;border-radius:12px;padding:8px 10px;cursor:pointer;font-size:.92rem;height:100%;transition:background .15s,border-color .15s}
+  .opts label b{display:block;font-size:1.05rem}
+  .opts input:checked+label{background:#d6eae5;border-color:#6b3a5c}
+  .opts input:focus-visible+label{outline:3px solid #6b3a5c;outline-offset:2px}
+  .opts label:hover{border-color:#6b3a5c}
+  .risultato{border-radius:16px;padding:18px;margin-top:16px;text-align:center;background:#f4f6f7}
+  .punti{font-family:Georgia,serif;font-size:3rem;line-height:1}
+  .punti small{font-size:1.2rem;color:#5b6b7a}
+  .esito{font-weight:700;margin-top:6px}
+  .nota{font-size:.88rem;color:#5b6b7a;margin-top:6px}
+  .ok{background:#d6eae5}.medio{background:#fbe9c6}.grave{background:#f6d5cd}
+  button{margin-top:12px;background:#6b3a5c;color:#fff;border:0;border-radius:999px;padding:10px 22px;font:inherit;font-weight:600;cursor:pointer}
+  button:hover{background:#552d49}
+  .avviso{font-size:.8rem;color:#5b6b7a;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="box">
+  <h2>Calcolatore del punteggio di Apgar</h2>
+  <p class="sub">Per ogni parametro scegli la descrizione che corrisponde al neonato.</p>
+
+  <div class="tempo" role="radiogroup" aria-label="Momento della valutazione">
+    <label><input type="radio" name="tempo" value="1" checked> 1° minuto</label>
+    <label><input type="radio" name="tempo" value="5"> 5° minuto</label>
+  </div>
+
+  <form id="form" onsubmit="return false"></form>
+
+  <div class="risultato" id="risultato" aria-live="polite"></div>
+  <button type="button" id="reset">Azzera</button>
+
+  <p class="avviso">Strumento a scopo didattico. Non sostituisce la valutazione clinica di un professionista sanitario.</p>
+</div>
+
+<script>
+  // Parametri: nome e descrizione dei 3 livelli (0, 1, 2)
+  var PARAMETRI = [
+    {nome: "Frequenza cardiaca", d: ["Assente", "Meno di 100 battiti/min", "100 battiti/min o più"]},
+    {nome: "Respiro", d: ["Assente", "Lento o irregolare", "Pianto vigoroso"]},
+    {nome: "Tono muscolare", d: ["Flaccido", "Flessione parziale degli arti", "Movimenti attivi"]},
+    {nome: "Reattività agli stimoli", d: ["Nessuna risposta", "Smorfie", "Pianto, tosse o starnuto"]},
+    {nome: "Colorito", d: ["Pallido o bluastro", "Corpo roseo, estremità bluastre", "Tutto roseo"]}
+  ];
+
+  var form = document.getElementById("form");
+  var out = document.getElementById("risultato");
+
+  // Costruisce le 5 domande
+  PARAMETRI.forEach(function (p, i) {
+    var fs = document.createElement("fieldset");
+    var html = "<legend>" + p.nome + "</legend><div class='opts'>";
+    for (var v = 0; v < 3; v++) {
+      var id = "p" + i + "_" + v;
+      html += "<div><input type='radio' name='p" + i + "' id='" + id + "' value='" + v + "'>" +
+              "<label for='" + id + "'><b>" + v + "</b>" + p.d[v] + "</label></div>";
+    }
+    fs.innerHTML = html + "</div>";
+    form.appendChild(fs);
+  });
+
+  function calcola() {
+    var totale = 0, risposte = 0;
+    PARAMETRI.forEach(function (p, i) {
+      var scelto = form.querySelector("input[name='p" + i + "']:checked");
+      if (scelto) { totale += Number(scelto.value); risposte++; }
+    });
+    var tempo = document.querySelector("input[name='tempo']:checked").value;
+
+    if (risposte < PARAMETRI.length) {
+      out.className = "risultato";
+      out.innerHTML = "Seleziona tutti i parametri (" + risposte + "/5)";
+      return;
+    }
+    var classe, esito, nota;
+    if (totale >= 7) {
+      classe = "ok"; esito = "Condizioni buone";
+      nota = "Di solito è sufficiente la normale assistenza di routine.";
+    } else if (totale >= 4) {
+      classe = "medio"; esito = "Difficoltà lieve o moderata";
+      nota = "Il neonato può aver bisogno di assistenza.";
+    } else {
+      classe = "grave"; esito = "Grave difficoltà";
+      nota = "Serve un intervento immediato.";
+    }
+    out.className = "risultato " + classe;
+    out.innerHTML = "<div class='punti'>" + totale + " <small>/ 10</small></div>" +
+                    "<div class='esito'>" + esito + " (" + tempo + "° minuto)</div>" +
+                    "<div class='nota'>" + nota + "</div>";
+  }
+
+  form.addEventListener("change", calcola);
+  document.querySelectorAll("input[name='tempo']").forEach(function (r) {
+    r.addEventListener("change", calcola);
+  });
+  document.getElementById("reset").addEventListener("click", function () {
+    form.reset();
+    calcola();
+  });
+
+  calcola();
+</script>
+</body>
+</html>
